@@ -229,6 +229,8 @@ Returns a promise of the deletion result. Must reject if not found.
 
 L<Mojolicious>, L<Mojolicious::Guides>, L<https://mojolicious.org>.
 
+L<Mojolicious::Command::webpush> - command-line control of web-push.
+
 L<https://developers.google.com/web/fundamentals/push-notifications>
 
 =head1 ACKNOWLEDGEMENTS

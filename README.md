@@ -127,6 +127,8 @@ Returns a promise of the deletion result. Must reject if not found.
 
 [Mojolicious](https://metacpan.org/pod/Mojolicious), [Mojolicious::Guides](https://metacpan.org/pod/Mojolicious::Guides), [https://mojolicious.org](https://mojolicious.org).
 
+[Mojolicious::Command::webpush](https://metacpan.org/pod/Mojolicious::Command::webpush) - command-line control of web-push.
+
 [https://developers.google.com/web/fundamentals/push-notifications](https://developers.google.com/web/fundamentals/push-notifications)
 
 # ACKNOWLEDGEMENTS
