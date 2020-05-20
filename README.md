@@ -8,11 +8,17 @@ Mojolicious::Plugin::WebPush - plugin to aid real-time web push
     my $webpush = plugin 'WebPush' => {
       save_endpoint => '/api/savesubs',
       subs_create_p => \&subs_create_p,
+      subs_read_p => \&subs_read_p,
     };
 
     sub subs_create_p {
       my ($session, $subs_info) = @_;
       app->db->save_subs_p($session->{user_id}, $subs_info);
+    }
+
+    sub subs_read_p {
+      my ($user_id) = @_;
+      app->db->lookup_subs_p($user_id);
     }
 
 # DESCRIPTION
@@ -56,6 +62,24 @@ operation succeeds, or reject with a reason. It will be passed parameters:
 - The ["session" in Mojolicious::Controller](https://metacpan.org/pod/Mojolicious::Controller#session) object, to correctly identify
 the user.
 - The `subscription_info` hash-ref, needed to push actual messages.
+
+## subs\_read\_p
+
+Required. The code to be called to look up a user registered for push
+notifications. It will be passed parameters:
+
+- The opaque information your app uses to identify the user.
+
+Returns a promise of the `subscription_info` hash-ref. Must reject if
+not found.
+
+# HELPERS
+
+## webpush.read\_p
+
+    $c->webpush->read_p($user_id)->then(sub {
+      $c->render(text => 'Info: ' . to_json(shift));
+    });
 
 # SEE ALSO
 

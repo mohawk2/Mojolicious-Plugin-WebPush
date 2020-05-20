@@ -9,6 +9,7 @@ my $ENDPOINT = '/api/savesubs';
 my $webpush = plugin 'WebPush' => {
   save_endpoint => $ENDPOINT,
   subs_create_p => \&subs_create_p,
+  subs_read_p => \&subs_read_p,
 };
 
 my %userdb;
@@ -16,6 +17,12 @@ sub subs_create_p {
   my ($session, $subs_info) = @_;
   $userdb{$session->{user_id}} = $subs_info;
   Mojo::Promise->resolve(1);
+}
+
+sub subs_read_p {
+  my ($user_id) = @_;
+  return Mojo::Promise->reject("Not found: '$user_id'") if !$userdb{$user_id};
+  Mojo::Promise->resolve($userdb{$user_id});
 }
 
 post '/login/:user_id' => sub {
@@ -54,6 +61,17 @@ subtest 'save' => sub {
     ->or(sub { diag explain $t->tx->res->body })
     ;
   is_deeply $userdb{bob}, $bob_data;
+};
+
+subtest 'webpush.read_p' => sub {
+  my $info;
+  app->webpush->read_p('bob')->then(sub { $info = shift })->wait;
+  is_deeply $info, $bob_data;
+  my $temp = delete $userdb{bob};
+  my $rej;
+  app->webpush->read_p('bob')->then(undef, sub { $rej = shift })->wait;
+  isnt $rej, undef;
+  $userdb{bob} = $temp;
 };
 
 done_testing();

@@ -7,6 +7,7 @@ our $VERSION = '0.01';
 my @MANDATORY_CONF = qw(
   save_endpoint
   subs_create_p
+  subs_read_p
 );
 
 sub _decode {
@@ -41,6 +42,7 @@ sub register {
   my ($self, $app, $conf) = @_;
   my @config_errors = grep !exists $conf->{$_}, @MANDATORY_CONF;
   die "Missing config keys @config_errors\n" if @config_errors;
+  $app->helper('webpush.read_p' => sub { $conf->{subs_read_p}->($_[1]) });
   my $r = $app->routes;
   $r->post($conf->{save_endpoint} => _make_route_handler($conf->{subs_create_p}));
   $self;
@@ -69,11 +71,17 @@ Mojolicious::Plugin::WebPush - plugin to aid real-time web push
   my $webpush = plugin 'WebPush' => {
     save_endpoint => '/api/savesubs',
     subs_create_p => \&subs_create_p,
+    subs_read_p => \&subs_read_p,
   };
 
   sub subs_create_p {
     my ($session, $subs_info) = @_;
     app->db->save_subs_p($session->{user_id}, $subs_info);
+  }
+
+  sub subs_read_p {
+    my ($user_id) = @_;
+    app->db->lookup_subs_p($user_id);
   }
 
 =head1 DESCRIPTION
@@ -126,6 +134,30 @@ the user.
 The C<subscription_info> hash-ref, needed to push actual messages.
 
 =back
+
+=head2 subs_read_p
+
+Required. The code to be called to look up a user registered for push
+notifications. It will be passed parameters:
+
+=over
+
+=item *
+
+The opaque information your app uses to identify the user.
+
+=back
+
+Returns a promise of the C<subscription_info> hash-ref. Must reject if
+not found.
+
+=head1 HELPERS
+
+=head2 webpush.read_p
+
+  $c->webpush->read_p($user_id)->then(sub {
+    $c->render(text => 'Info: ' . to_json(shift));
+  });
 
 =head1 SEE ALSO
 
