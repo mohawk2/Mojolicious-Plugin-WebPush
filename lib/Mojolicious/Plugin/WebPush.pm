@@ -9,6 +9,7 @@ my @MANDATORY_CONF = qw(
   save_endpoint
   subs_create_p
   subs_read_p
+  subs_delete_p
 );
 
 sub _decode {
@@ -51,6 +52,7 @@ sub register {
     $conf->{subs_create_p}->(@_[1,2]);
   });
   $app->helper('webpush.read_p' => sub { $conf->{subs_read_p}->($_[1]) });
+  $app->helper('webpush.delete_p' => sub { $conf->{subs_delete_p}->($_[1]) });
   my $r = $app->routes;
   $r->post($conf->{save_endpoint} => _make_route_handler(
     @$conf{qw(subs_session2user_p subs_create_p)},
@@ -83,6 +85,7 @@ Mojolicious::Plugin::WebPush - plugin to aid real-time web push
     subs_session2user_p => \&subs_session2user_p,
     subs_create_p => \&subs_create_p,
     subs_read_p => \&subs_read_p,
+    subs_delete_p => \&subs_delete_p,
   };
 
   sub subs_session2user_p {
@@ -99,6 +102,11 @@ Mojolicious::Plugin::WebPush - plugin to aid real-time web push
   sub subs_read_p {
     my ($user_id) = @_;
     app->db->lookup_subs_p($user_id);
+  }
+
+  sub subs_delete_p {
+    my ($user_id) = @_;
+    app->db->delete_subs_p($user_id);
   }
 
 =head1 DESCRIPTION
@@ -182,6 +190,21 @@ The opaque information your app uses to identify the user.
 Returns a promise of the C<subscription_info> hash-ref. Must reject if
 not found.
 
+=head2 subs_delete_p
+
+Required. The code to be called to delete up a user registered for push
+notifications. It will be passed parameters:
+
+=over
+
+=item *
+
+The opaque information your app uses to identify the user.
+
+=back
+
+Returns a promise of the deletion result. Must reject if not found.
+
 =head1 HELPERS
 
 =head2 webpush.create_p
@@ -194,6 +217,12 @@ not found.
 
   $c->webpush->read_p($user_id)->then(sub {
     $c->render(text => 'Info: ' . to_json(shift));
+  });
+
+=head2 webpush.delete_p
+
+  $c->webpush->delete_p($user_id)->then(sub {
+    $c->render(json => { data => { success => \1 } });
   });
 
 =head1 SEE ALSO

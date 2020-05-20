@@ -10,6 +10,7 @@ Mojolicious::Plugin::WebPush - plugin to aid real-time web push
       subs_session2user_p => \&subs_session2user_p,
       subs_create_p => \&subs_create_p,
       subs_read_p => \&subs_read_p,
+      subs_delete_p => \&subs_delete_p,
     };
 
     sub subs_session2user_p {
@@ -26,6 +27,11 @@ Mojolicious::Plugin::WebPush - plugin to aid real-time web push
     sub subs_read_p {
       my ($user_id) = @_;
       app->db->lookup_subs_p($user_id);
+    }
+
+    sub subs_delete_p {
+      my ($user_id) = @_;
+      app->db->delete_subs_p($user_id);
     }
 
 # DESCRIPTION
@@ -88,6 +94,15 @@ notifications. It will be passed parameters:
 Returns a promise of the `subscription_info` hash-ref. Must reject if
 not found.
 
+## subs\_delete\_p
+
+Required. The code to be called to delete up a user registered for push
+notifications. It will be passed parameters:
+
+- The opaque information your app uses to identify the user.
+
+Returns a promise of the deletion result. Must reject if not found.
+
 # HELPERS
 
 ## webpush.create\_p
@@ -100,6 +115,12 @@ not found.
 
     $c->webpush->read_p($user_id)->then(sub {
       $c->render(text => 'Info: ' . to_json(shift));
+    });
+
+## webpush.delete\_p
+
+    $c->webpush->delete_p($user_id)->then(sub {
+      $c->render(json => { data => { success => \1 } });
     });
 
 # SEE ALSO

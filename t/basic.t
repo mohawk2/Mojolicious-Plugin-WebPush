@@ -11,6 +11,7 @@ my $webpush = plugin 'WebPush' => {
   subs_session2user_p => \&subs_session2user_p,
   subs_create_p => \&subs_create_p,
   subs_read_p => \&subs_read_p,
+  subs_delete_p => \&subs_delete_p,
 };
 
 sub subs_session2user_p {
@@ -29,6 +30,12 @@ sub subs_read_p {
   my ($user_id) = @_;
   return Mojo::Promise->reject("Not found: '$user_id'") if !$userdb{$user_id};
   Mojo::Promise->resolve($userdb{$user_id});
+}
+
+sub subs_delete_p {
+  my ($user_id) = @_;
+  return Mojo::Promise->reject("Not found: '$user_id'") if !$userdb{$user_id};
+  Mojo::Promise->resolve(delete $userdb{$user_id});
 }
 
 post '/login/:user_id' => sub {
@@ -86,6 +93,12 @@ subtest 'webpush.read_p' => sub {
   app->webpush->read_p('bob')->then(undef, sub { $rej = shift })->wait;
   isnt $rej, undef;
   $userdb{bob} = $temp;
+};
+
+subtest 'webpush.delete_p' => sub {
+  my $info;
+  app->webpush->delete_p('bob')->then(sub { $info = shift })->wait;
+  isnt $info, undef;
 };
 
 done_testing();
