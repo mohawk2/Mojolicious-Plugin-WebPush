@@ -5,6 +5,7 @@ use Mojo::JSON qw(decode_json to_json);
 our $VERSION = '0.01';
 
 my @MANDATORY_CONF = qw(
+  subs_session2user_p
   save_endpoint
   subs_create_p
   subs_read_p
@@ -24,14 +25,16 @@ sub _error {
 }
 
 sub _make_route_handler {
-  my ($subs_create_p) = @_;
+  my ($subs_session2user_p, $subs_create_p) = @_;
   sub {
     my ($c) = @_;
     my ($decode_ok, $body) = _decode($c->req->body);
     return _error($c, $body) if !$decode_ok;
     eval { validate_subs_info($body) };
     return _error($c, $@) if $@;
-    return $subs_create_p->($c->session, $body)->then(
+    return $subs_session2user_p->($c->session)->then(
+      sub { $subs_create_p->($_[0], $body) },
+    )->then(
       sub { $c->render(json => { data => { success => \1 } }) },
       sub { _error($c, @_) },
     );
@@ -42,9 +45,16 @@ sub register {
   my ($self, $app, $conf) = @_;
   my @config_errors = grep !exists $conf->{$_}, @MANDATORY_CONF;
   die "Missing config keys @config_errors\n" if @config_errors;
+  $app->helper('webpush.create_p' => sub {
+    eval { validate_subs_info($_[2]) };
+    return Mojo::Promise->reject($@) if $@;
+    $conf->{subs_create_p}->(@_[1,2]);
+  });
   $app->helper('webpush.read_p' => sub { $conf->{subs_read_p}->($_[1]) });
   my $r = $app->routes;
-  $r->post($conf->{save_endpoint} => _make_route_handler($conf->{subs_create_p}));
+  $r->post($conf->{save_endpoint} => _make_route_handler(
+    @$conf{qw(subs_session2user_p subs_create_p)},
+  ));
   $self;
 }
 
@@ -70,9 +80,16 @@ Mojolicious::Plugin::WebPush - plugin to aid real-time web push
   # Mojolicious::Lite
   my $webpush = plugin 'WebPush' => {
     save_endpoint => '/api/savesubs',
+    subs_session2user_p => \&subs_session2user_p,
     subs_create_p => \&subs_create_p,
     subs_read_p => \&subs_read_p,
   };
+
+  sub subs_session2user_p {
+    my ($session) = @_;
+    return Mojo::Promise->reject("Session not logged in") if !$session->{user_id};
+    Mojo::Promise->resolve($session->{user_id});
+  }
 
   sub subs_create_p {
     my ($session, $subs_info) = @_;
@@ -116,6 +133,21 @@ If failure:
 
 This will be handled by the provided service worker.
 
+=head2 subs_session2user_p
+
+Required. The code to be called to look up the user currently identified
+by this session, which returns a promise of the user ID. Must reject
+if no user logged in and that matters. It will be passed parameters:
+
+=over
+
+=item *
+
+The L<Mojolicious::Controller/session> object, to correctly identify
+the user.
+
+=back
+
 =head2 subs_create_p
 
 Required. The code to be called to store users registered for push
@@ -126,8 +158,7 @@ operation succeeds, or reject with a reason. It will be passed parameters:
 
 =item *
 
-The L<Mojolicious::Controller/session> object, to correctly identify
-the user.
+The ID to correctly identify the user.
 
 =item *
 
@@ -152,6 +183,12 @@ Returns a promise of the C<subscription_info> hash-ref. Must reject if
 not found.
 
 =head1 HELPERS
+
+=head2 webpush.create_p
+
+  $c->webpush->create_p($user_id, $subs_info)->then(sub {
+    $c->render(json => { data => { success => \1 } });
+  });
 
 =head2 webpush.read_p
 

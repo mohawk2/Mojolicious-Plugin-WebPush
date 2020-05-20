@@ -7,9 +7,16 @@ Mojolicious::Plugin::WebPush - plugin to aid real-time web push
     # Mojolicious::Lite
     my $webpush = plugin 'WebPush' => {
       save_endpoint => '/api/savesubs',
+      subs_session2user_p => \&subs_session2user_p,
       subs_create_p => \&subs_create_p,
       subs_read_p => \&subs_read_p,
     };
+
+    sub subs_session2user_p {
+      my ($session) = @_;
+      return Mojo::Promise->reject("Session not logged in") if !$session->{user_id};
+      Mojo::Promise->resolve($session->{user_id});
+    }
 
     sub subs_create_p {
       my ($session, $subs_info) = @_;
@@ -53,14 +60,22 @@ If failure:
 
 This will be handled by the provided service worker.
 
+## subs\_session2user\_p
+
+Required. The code to be called to look up the user currently identified
+by this session, which returns a promise of the user ID. Must reject
+if no user logged in and that matters. It will be passed parameters:
+
+- The ["session" in Mojolicious::Controller](https://metacpan.org/pod/Mojolicious::Controller#session) object, to correctly identify
+the user.
+
 ## subs\_create\_p
 
 Required. The code to be called to store users registered for push
 notifications, which must return a promise of a true value if the
 operation succeeds, or reject with a reason. It will be passed parameters:
 
-- The ["session" in Mojolicious::Controller](https://metacpan.org/pod/Mojolicious::Controller#session) object, to correctly identify
-the user.
+- The ID to correctly identify the user.
 - The `subscription_info` hash-ref, needed to push actual messages.
 
 ## subs\_read\_p
@@ -74,6 +89,12 @@ Returns a promise of the `subscription_info` hash-ref. Must reject if
 not found.
 
 # HELPERS
+
+## webpush.create\_p
+
+    $c->webpush->create_p($user_id, $subs_info)->then(sub {
+      $c->render(json => { data => { success => \1 } });
+    });
 
 ## webpush.read\_p
 
