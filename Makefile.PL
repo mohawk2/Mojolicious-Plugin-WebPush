@@ -15,7 +15,6 @@ WriteMakefile(
   },
   TEST_REQUIRES => {
     'Test::More' => '0.98',
-    'Test::Snapshot' => '0.02', # better snapshot filenames
   },
   PREREQ_PM => {
     'Mojolicious' => '8.42',
