@@ -11,6 +11,8 @@ Mojolicious::Plugin::WebPush - plugin to aid real-time web push
       subs_create_p => \&subs_create_p,
       subs_read_p => \&subs_read_p,
       subs_delete_p => \&subs_delete_p,
+      ecc_private_key => 'vapid_private_key.pem',
+      claim_sub => "mailto:admin@example.com",
     };
 
     sub subs_session2user_p {
@@ -103,6 +105,23 @@ notifications. It will be passed parameters:
 
 Returns a promise of the deletion result. Must reject if not found.
 
+## ecc\_private\_key
+
+A value to be passed to ["new" in Crypt::PK::ECC](https://metacpan.org/pod/Crypt::PK::ECC#new): a simple scalar is a
+filename, a scalar-ref is the actual key. If not provided,
+["webpush.authorization"](#webpush-authorization) will (obviously) not be able to function.
+
+## claim\_sub
+
+A value to be used as the `sub` claim by the ["webpush.authorization"](#webpush-authorization),
+which needs it. Must be either an HTTPS or `mailto:` URL.
+
+## claim\_exp\_offset
+
+A value to be added to current time, in seconds, in the `exp` claim
+for ["webpush.authorization"](#webpush-authorization). Defaults to 86400 (24 hours). The maximum
+valid value in RFC 8292 is 86400.
+
 # HELPERS
 
 ## webpush.create\_p
@@ -123,11 +142,36 @@ Returns a promise of the deletion result. Must reject if not found.
       $c->render(json => { data => { success => \1 } });
     });
 
+## webpush.authorization
+
+    my $header_value = $c->webpush->authorization;
+
+Won't function without ["claim\_sub"](#claim_sub) and ["ecc\_private\_key"](#ecc_private_key). Returns
+a suitable `Authorization` header value to send to a push service.
+Valid for a period defined by ["claim\_exp\_offset"](#claim_exp_offset). Not currently cached,
+but could become so to avoid unnecessary computation.
+
+## webpush.aud
+
+    my $aud = $c->webpush->aud;
+
+Gives the app's value it will use for the `aud` JWT claim, useful mostly
+for testing.
+
+## webpush.verify\_token
+
+    my $bool = $c->webpush->verify_token($authorization_header_value);
+
+Cryptographically verifies a JSON Web Token (JWT), such as generated
+by ["webpush.authorization"](#webpush-authorization).
+
 # SEE ALSO
 
 [Mojolicious](https://metacpan.org/pod/Mojolicious), [Mojolicious::Guides](https://metacpan.org/pod/Mojolicious::Guides), [https://mojolicious.org](https://mojolicious.org).
 
 [Mojolicious::Command::webpush](https://metacpan.org/pod/Mojolicious::Command::webpush) - command-line control of web-push.
+
+RFC 8292 - Voluntary Application Server Identification (for web push).
 
 [https://developers.google.com/web/fundamentals/push-notifications](https://developers.google.com/web/fundamentals/push-notifications)
 

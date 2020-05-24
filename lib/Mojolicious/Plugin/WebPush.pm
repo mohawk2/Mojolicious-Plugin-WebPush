@@ -1,6 +1,9 @@
 package Mojolicious::Plugin::WebPush;
 use Mojo::Base 'Mojolicious::Plugin';
-use Mojo::JSON qw(decode_json to_json);
+use Mojo::JSON qw(decode_json);
+use Crypt::PK::ECC;
+use MIME::Base64 qw(encode_base64url decode_base64url);
+use Crypt::JWT qw(encode_jwt decode_jwt);
 
 our $VERSION = '0.01';
 
@@ -11,6 +14,7 @@ my @MANDATORY_CONF = qw(
   subs_read_p
   subs_delete_p
 );
+my @AUTH_CONF = qw(claim_sub ecc_private_key);
 
 sub _decode {
   my ($bytes) = @_;
@@ -42,6 +46,37 @@ sub _make_route_handler {
   };
 }
 
+sub _make_auth_helper {
+  my ($app, $conf) = @_;
+  my $exp_offset = $conf->{claim_exp_offset} || 86400;
+  my $key = Crypt::PK::ECC->new($conf->{ecc_private_key});
+  my $aud = $app->webpush->aud;
+  my $claims_start = { aud => $aud, sub => $conf->{claim_sub} };
+  my $pkey = encode_base64url $key->export_key_raw('public');
+  sub {
+    my ($c) = @_;
+    my $claims = { exp => time + $exp_offset, %$claims_start };
+    my $token = encode_jwt key => $key, alg => 'ES256', payload => $claims;
+    "vapid t=$token,k=$pkey";
+  };
+}
+
+sub _aud_helper {
+  $_[0]->ua->server->url->path(Mojo::Path->new->trailing_slash(0)).'';
+}
+
+sub _verify_helper {
+  my ($app, $auth_header_value) = @_;
+  (my $schema, $auth_header_value) = split ' ', $auth_header_value;
+  return if $schema ne 'vapid';
+  my %k2v = map split('=', $_), split ',', $auth_header_value;
+  eval {
+    my $key = Crypt::PK::ECC->new;
+    $key->import_key_raw(decode_base64url($k2v{k}), 'P-256');
+    decode_jwt token => $k2v{t}, key => $key, alg => 'ES256', verify_exp => 0;
+  };
+}
+
 sub register {
   my ($self, $app, $conf) = @_;
   my @config_errors = grep !exists $conf->{$_}, @MANDATORY_CONF;
@@ -53,6 +88,12 @@ sub register {
   });
   $app->helper('webpush.read_p' => sub { $conf->{subs_read_p}->($_[1]) });
   $app->helper('webpush.delete_p' => sub { $conf->{subs_delete_p}->($_[1]) });
+  $app->helper('webpush.aud' => \&_aud_helper);
+  $app->helper('webpush.authorization' => (grep !$conf->{$_}, @AUTH_CONF)
+    ? sub { die "Must provide @AUTH_CONF\n" }
+    : _make_auth_helper($app, $conf)
+  );
+  $app->helper('webpush.verify_token' => \&_verify_helper);
   my $r = $app->routes;
   $r->post($conf->{save_endpoint} => _make_route_handler(
     @$conf{qw(subs_session2user_p subs_create_p)},
@@ -86,6 +127,8 @@ Mojolicious::Plugin::WebPush - plugin to aid real-time web push
     subs_create_p => \&subs_create_p,
     subs_read_p => \&subs_read_p,
     subs_delete_p => \&subs_delete_p,
+    ecc_private_key => 'vapid_private_key.pem',
+    claim_sub => "mailto:admin@example.com",
   };
 
   sub subs_session2user_p {
@@ -205,6 +248,23 @@ The opaque information your app uses to identify the user.
 
 Returns a promise of the deletion result. Must reject if not found.
 
+=head2 ecc_private_key
+
+A value to be passed to L<Crypt::PK::ECC/new>: a simple scalar is a
+filename, a scalar-ref is the actual key. If not provided,
+L</webpush.authorization> will (obviously) not be able to function.
+
+=head2 claim_sub
+
+A value to be used as the C<sub> claim by the L</webpush.authorization>,
+which needs it. Must be either an HTTPS or C<mailto:> URL.
+
+=head2 claim_exp_offset
+
+A value to be added to current time, in seconds, in the C<exp> claim
+for L</webpush.authorization>. Defaults to 86400 (24 hours). The maximum
+valid value in RFC 8292 is 86400.
+
 =head1 HELPERS
 
 =head2 webpush.create_p
@@ -225,11 +285,36 @@ Returns a promise of the deletion result. Must reject if not found.
     $c->render(json => { data => { success => \1 } });
   });
 
+=head2 webpush.authorization
+
+  my $header_value = $c->webpush->authorization;
+
+Won't function without L</claim_sub> and L</ecc_private_key>. Returns
+a suitable C<Authorization> header value to send to a push service.
+Valid for a period defined by L</claim_exp_offset>. Not currently cached,
+but could become so to avoid unnecessary computation.
+
+=head2 webpush.aud
+
+  my $aud = $c->webpush->aud;
+
+Gives the app's value it will use for the C<aud> JWT claim, useful mostly
+for testing.
+
+=head2 webpush.verify_token
+
+  my $bool = $c->webpush->verify_token($authorization_header_value);
+
+Cryptographically verifies a JSON Web Token (JWT), such as generated
+by L</webpush.authorization>.
+
 =head1 SEE ALSO
 
 L<Mojolicious>, L<Mojolicious::Guides>, L<https://mojolicious.org>.
 
 L<Mojolicious::Command::webpush> - command-line control of web-push.
+
+RFC 8292 - Voluntary Application Server Identification (for web push).
 
 L<https://developers.google.com/web/fundamentals/push-notifications>
 
