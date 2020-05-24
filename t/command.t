@@ -18,6 +18,7 @@ my @TESTS = (
   [ [qw(read bob)], encode_json($bob_data)."\n", "" ],
   [ [qw(delete bob)], encode_json($bob_data)."\n", "" ],
   [ [qw(read bob)], "", "Not found: 'bob'\n" ],
+  [ [qw(keygen)], qr/BEGIN EC PRIVATE KEY/, "" ],
 );
 run_test($cmd, @$_) for @TESTS;
 

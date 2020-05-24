@@ -1,13 +1,22 @@
 package Mojolicious::Command::webpush;
 use Mojo::Base 'Mojolicious::Command';
 use Mojo::JSON qw(encode_json decode_json);
+use Crypt::PK::ECC;
 
 my %COMMAND2JSON = (
   create => [ 1 ],
 );
+my %COMMAND2CB = (
+  keygen => \&_keygen,
+);
 
 has description => q{Manage your app's web-push};
 has usage       => sub { shift->extract_usage };
+
+sub _keygen {
+  print Crypt::PK::ECC->new->generate_key('prime256v1')
+    ->export_key_pem('private');
+}
 
 sub _promisify {
   my ($app, $cmd) = @_;
@@ -20,6 +29,7 @@ sub _promisify {
 
 sub run {
   my ($self, $cmd, @args) = @_;
+  return $COMMAND2CB{$cmd}->($self, @args) if $COMMAND2CB{$cmd};
   $args[$_] = decode_json($args[$_]) for @{ $COMMAND2JSON{$cmd} || [] };
   $cmd .= "_p";
   $self->app->webpush->$cmd(@args)->then(
@@ -43,6 +53,7 @@ Mojolicious::Command::webpush - Manage your app's web-push
     ./myapp.pl webpush create <USERID> <JSON>
     ./myapp.pl webpush read <USERID>
     ./myapp.pl webpush delete <USERID>
+    ./myapp.pl webpush keygen > webpush_private_key.pem
 
   Options:
     -h, --help          Show this summary of available options
@@ -54,8 +65,11 @@ Mojolicious::Command::webpush - Manage your app's web-push
 =head1 DESCRIPTION
 
 L<Mojolicious::Command::webpush> manages your application's web-push
-information. It gives a command-line interface to the helpers in
-L<Mojolicious::Plugin::WebPush/HELPERS>.
+information. It gives a command-line interface to the relevant helpers
+in L<Mojolicious::Plugin::WebPush/HELPERS>.
+
+The C<keygen> command prints a PEM-encoded L<Crypt::PK::ECC/generate_key>
+C<prime256v1> result.
 
 =head1 ATTRIBUTES
 
