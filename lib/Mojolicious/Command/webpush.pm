@@ -9,6 +9,15 @@ my %COMMAND2JSON = (
 has description => q{Manage your app's web-push};
 has usage       => sub { shift->extract_usage };
 
+sub _promisify {
+  my ($app, $cmd) = @_;
+  sub {
+    my (undef, @args) = @_;
+    my @res = eval { $app->$cmd(@args) };
+    $@ ? Mojo::Promise->reject($@) : Mojo::Promise->resolve(@res);
+  };
+}
+
 sub run {
   my ($self, $cmd, @args) = @_;
   $args[$_] = decode_json($args[$_]) for @{ $COMMAND2JSON{$cmd} || [] };
