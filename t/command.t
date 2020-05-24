@@ -31,6 +31,6 @@ sub run_test {
   open my $err_handle, '>', \$err;
   local *STDERR = $err_handle;
   $cmd->run(@$args);
-  is $out, $expected_out, "$args->[0] right stdout";
-  is $err, $expected_err, "$args->[0] right stderr";
+  (ref $_->[1] ? \&like : \&is)->(@$_[0,1], "$args->[0] right std$_->[2]")
+    for [ $out, $expected_out, 'out' ], [ $err, $expected_err, 'err' ];
 }
