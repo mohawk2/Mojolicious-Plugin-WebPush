@@ -66,7 +66,8 @@ If failure:
 
     { "errors": [ { "message": "The exception reason" } ] }
 
-This will be handled by the provided service worker.
+This will be handled by the provided service worker. In case it is
+required by the app itself, the added route is named `webpush.save`.
 
 ## subs\_session2user\_p
 

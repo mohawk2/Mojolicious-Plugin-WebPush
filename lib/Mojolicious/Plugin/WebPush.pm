@@ -97,7 +97,7 @@ sub register {
   my $r = $app->routes;
   $r->post($conf->{save_endpoint} => _make_route_handler(
     @$conf{qw(subs_session2user_p subs_create_p)},
-  ));
+  ), 'webpush.save');
   $self;
 }
 
@@ -182,7 +182,8 @@ If failure:
 
   { "errors": [ { "message": "The exception reason" } ] }
 
-This will be handled by the provided service worker.
+This will be handled by the provided service worker. In case it is
+required by the app itself, the added route is named C<webpush.save>.
 
 =head2 subs_session2user_p
 
