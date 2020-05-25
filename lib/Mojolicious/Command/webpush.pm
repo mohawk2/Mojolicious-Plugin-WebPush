@@ -14,7 +14,7 @@ has description => q{Manage your app's web-push};
 has usage       => sub { shift->extract_usage };
 
 sub _keygen {
-  print Crypt::PK::ECC->new->generate_key('prime256v1')
+  print STDOUT Crypt::PK::ECC->new->generate_key('prime256v1')
     ->export_key_pem('private');
 }
 
@@ -29,11 +29,12 @@ sub _promisify {
 
 sub run {
   my ($self, $cmd, @args) = @_;
+  return print STDOUT $self->usage if !$cmd;
   return $COMMAND2CB{$cmd}->($self, @args) if $COMMAND2CB{$cmd};
   $args[$_] = decode_json($args[$_]) for @{ $COMMAND2JSON{$cmd} || [] };
   $cmd .= "_p";
   $self->app->webpush->$cmd(@args)->then(
-    sub { print encode_json(@_), "\n" },
+    sub { print STDOUT encode_json(@_), "\n" },
     sub { print STDERR @_, "\n" },
   )->wait;
 }

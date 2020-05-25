@@ -14,6 +14,7 @@ my $cmd = Mojolicious::Command::webpush->new(app => app);
 my $bob_data = { endpoint => '/push/bob/v2', keys => { auth => '', p256dh => '' } };
 
 my @TESTS = (
+  [ [], qr/Usage/, "" ],
   [ [qw(create bob), encode_json($bob_data)], "1\n", "" ],
   [ [qw(read bob)], encode_json($bob_data)."\n", "" ],
   [ [qw(delete bob)], encode_json($bob_data)."\n", "" ],
