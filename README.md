@@ -159,6 +159,12 @@ but could become so to avoid unnecessary computation.
 Gives the app's value it will use for the `aud` JWT claim, useful mostly
 for testing.
 
+## webpush.public\_key
+
+    my $pkey = $c->webpush->public_key;
+
+Gives the app's public VAPID key, calculated from the private key.
+
 ## webpush.verify\_token
 
     my $bool = $c->webpush->verify_token($authorization_header_value);

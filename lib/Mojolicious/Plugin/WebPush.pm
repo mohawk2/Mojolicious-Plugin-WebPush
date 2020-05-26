@@ -53,6 +53,7 @@ sub _make_auth_helper {
   my $aud = $app->webpush->aud;
   my $claims_start = { aud => $aud, sub => $conf->{claim_sub} };
   my $pkey = encode_base64url $key->export_key_raw('public');
+  $app->helper('webpush.public_key' => sub { $pkey });
   sub {
     my ($c) = @_;
     my $claims = { exp => time + $exp_offset, %$claims_start };
@@ -301,6 +302,12 @@ but could become so to avoid unnecessary computation.
 
 Gives the app's value it will use for the C<aud> JWT claim, useful mostly
 for testing.
+
+=head2 webpush.public_key
+
+  my $pkey = $c->webpush->public_key;
+
+Gives the app's public VAPID key, calculated from the private key.
 
 =head2 webpush.verify_token
 
