@@ -172,6 +172,36 @@ Gives the app's public VAPID key, calculated from the private key.
 Cryptographically verifies a JSON Web Token (JWT), such as generated
 by ["webpush.authorization"](#webpush-authorization).
 
+# TEMPLATES
+
+Various templates are available for including in the app's templates:
+
+## webpush-askPermission.html.ep
+
+JavaScript functions, also for putting inside a `script` element:
+
+- askPermission
+- subscribeUserToPush
+- sendSubscriptionToBackEnd
+
+These each return a promise, and should be chained together:
+
+    <button onclick="
+      askPermission().then(subscribeUserToPush).then(sendSubscriptionToBackEnd)
+    ">
+      Ask permission
+    </button>
+    <script>
+    %= include 'webpush-askPermission'
+    </script>
+
+Each application must decide when to ask such permission, bearing in
+mind that once permission is refused, it is very difficult for the user
+to change such a refusal.
+
+When it is granted, the JavaScript code will communicate with the
+application, registering the needed information needed to web-push.
+
 # SEE ALSO
 
 [Mojolicious](https://metacpan.org/pod/Mojolicious), [Mojolicious::Guides](https://metacpan.org/pod/Mojolicious::Guides), [https://mojolicious.org](https://mojolicious.org).

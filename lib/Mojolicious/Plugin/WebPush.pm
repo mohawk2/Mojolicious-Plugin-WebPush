@@ -99,6 +99,7 @@ sub register {
   $r->post($conf->{save_endpoint} => _make_route_handler(
     @$conf{qw(subs_session2user_p subs_create_p)},
   ), 'webpush.save');
+  push @{ $app->renderer->classes }, __PACKAGE__;
   $self;
 }
 
@@ -316,6 +317,48 @@ Gives the app's public VAPID key, calculated from the private key.
 Cryptographically verifies a JSON Web Token (JWT), such as generated
 by L</webpush.authorization>.
 
+=head1 TEMPLATES
+
+Various templates are available for including in the app's templates:
+
+=head2 webpush-askPermission.html.ep
+
+JavaScript functions, also for putting inside a C<script> element:
+
+=over
+
+=item *
+
+askPermission
+
+=item *
+
+subscribeUserToPush
+
+=item *
+
+sendSubscriptionToBackEnd
+
+=back
+
+These each return a promise, and should be chained together:
+
+  <button onclick="
+    askPermission().then(subscribeUserToPush).then(sendSubscriptionToBackEnd)
+  ">
+    Ask permission
+  </button>
+  <script>
+  %= include 'webpush-askPermission'
+  </script>
+
+Each application must decide when to ask such permission, bearing in
+mind that once permission is refused, it is very difficult for the user
+to change such a refusal.
+
+When it is granted, the JavaScript code will communicate with the
+application, registering the needed information needed to web-push.
+
 =head1 SEE ALSO
 
 L<Mojolicious>, L<Mojolicious::Guides>, L<https://mojolicious.org>.
@@ -332,3 +375,53 @@ Part of this code is ported from
 L<https://github.com/web-push-libs/pywebpush>.
 
 =cut
+
+__DATA__
+
+@@ webpush-askPermission.html.ep
+% # from https://developers.google.com/web/fundamentals/push-notifications/subscribing-a-user
+function askPermission() {
+  return new Promise(function(resolve, reject) {
+    const permissionResult = Notification.requestPermission(resolve);
+    if (permissionResult) permissionResult.then(resolve, reject);
+  })
+  .then(result => result === 'granted' ? result : Promise.reject(result));
+}
+function subscribeUserToPush() {
+  return navigator.serviceWorker.register('serviceworker.js')
+  .then(registration => registration.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(
+      <%== Mojo::JSON::encode_json(app->webpush->public_key) %>
+    )
+  }))
+  .then(function(pushSubscription) {
+    console.log('Received PushSubscription: ', JSON.stringify(pushSubscription));
+    return pushSubscription;
+  });
+}
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/\-/g, '+')
+    .replace(/_/g, '/')
+  ;
+  const rawData = window.atob(base64);
+  return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
+}
+function sendSubscriptionToBackEnd(subscription) {
+  return fetch(<%== Mojo::JSON::encode_json(url_for 'webpush.save') %>, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(subscription)
+  })
+  .then(function(response) {
+    if (!response.ok) throw new Error(response.statusText);
+    return response.json();
+  })
+  .then(function(responseData) {
+    if (!(responseData.data && responseData.data.success)) {
+      throw new Error(responseData.errors[0].message);
+    }
+  });
+}
