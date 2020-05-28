@@ -5,6 +5,7 @@ Mojolicious::Plugin::WebPush - plugin to aid real-time web push
 # SYNOPSIS
 
     # Mojolicious::Lite
+    my $sw = plugin 'ServiceWorker' => { debug => 1 };
     my $webpush = plugin 'WebPush' => {
       save_endpoint => '/api/savesubs',
       subs_session2user_p => \&subs_session2user_p,
@@ -38,7 +39,9 @@ Mojolicious::Plugin::WebPush - plugin to aid real-time web push
 
 # DESCRIPTION
 
-[Mojolicious::Plugin::WebPush](https://metacpan.org/pod/Mojolicious::Plugin::WebPush) is a [Mojolicious](https://metacpan.org/pod/Mojolicious) plugin.
+[Mojolicious::Plugin::WebPush](https://metacpan.org/pod/Mojolicious::Plugin::WebPush) is a [Mojolicious](https://metacpan.org/pod/Mojolicious) plugin. In
+order to function, your app needs to have first installed
+[Mojolicious::Plugin::ServiceWorker](https://metacpan.org/pod/Mojolicious::Plugin::ServiceWorker) as shown in the synopsis above.
 
 # METHODS
 
@@ -204,6 +207,7 @@ These each return a promise, and should be chained together:
       Ask permission
     </button>
     <script>
+    %= include 'serviceworker-install'
     %= include 'webpush-askPermission'
     </script>
 

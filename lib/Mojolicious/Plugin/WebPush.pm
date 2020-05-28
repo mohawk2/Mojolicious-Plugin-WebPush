@@ -136,6 +136,7 @@ Mojolicious::Plugin::WebPush - plugin to aid real-time web push
 =head1 SYNOPSIS
 
   # Mojolicious::Lite
+  my $sw = plugin 'ServiceWorker' => { debug => 1 };
   my $webpush = plugin 'WebPush' => {
     save_endpoint => '/api/savesubs',
     subs_session2user_p => \&subs_session2user_p,
@@ -169,7 +170,9 @@ Mojolicious::Plugin::WebPush - plugin to aid real-time web push
 
 =head1 DESCRIPTION
 
-L<Mojolicious::Plugin::WebPush> is a L<Mojolicious> plugin.
+L<Mojolicious::Plugin::WebPush> is a L<Mojolicious> plugin. In
+order to function, your app needs to have first installed
+L<Mojolicious::Plugin::ServiceWorker> as shown in the synopsis above.
 
 =head1 METHODS
 
@@ -374,6 +377,7 @@ These each return a promise, and should be chained together:
     Ask permission
   </button>
   <script>
+  %= include 'serviceworker-install'
   %= include 'webpush-askPermission'
   </script>
 
@@ -415,17 +419,14 @@ function askPermission() {
   .then(result => result === 'granted' ? result : Promise.reject(result));
 }
 function subscribeUserToPush() {
-  return navigator.serviceWorker.register('serviceworker.js')
-  .then(registration => registration.pushManager.subscribe({
+  return navigator.serviceWorker.register(
+    <%== Mojo::JSON::encode_json(url_for(app->serviceworker->route)) %>
+  ).then(registration => registration.pushManager.subscribe({
     userVisibleOnly: true,
     applicationServerKey: urlBase64ToUint8Array(
       <%== Mojo::JSON::encode_json(app->webpush->public_key) %>
     )
-  }))
-  .then(function(pushSubscription) {
-    console.log('Received PushSubscription: ', JSON.stringify(pushSubscription));
-    return pushSubscription;
-  });
+  }));
 }
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
