@@ -212,7 +212,9 @@ operation succeeds, or reject with a reason. It will be passed parameters:
 
 =item *
 
-The ID to correctly identify the user.
+The ID to correctly identify the user. Please note that you ought to
+allow one person to have several devices with web-push enabled, and to
+design accordingly.
 
 =item *
 
