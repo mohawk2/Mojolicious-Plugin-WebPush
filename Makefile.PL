@@ -20,6 +20,7 @@ WriteMakefile(
     'Mojolicious' => '8.42',
     'Crypt::JWT' => '0.026',
     'CryptX' => '0.068',
+    'Crypt::RFC8188' => '0.01',
   },
   clean => { FILES => 'Mojolicious-Plugin-WebPush-*' },
   META_MERGE => {

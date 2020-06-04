@@ -174,6 +174,16 @@ Gives the app's public VAPID key, calculated from the private key.
 Cryptographically verifies a JSON Web Token (JWT), such as generated
 by ["webpush.authorization"](#webpush-authorization).
 
+## webpush.encrypt
+
+    use MIME::Base64 qw(decode_base64url);
+    my $ciphertext = $c->webpush->encrypt($data_bytes,
+      map decode_base64url($_), @{$subscription_info->{keys}}{qw(p256dh auth)}
+    );
+
+Returns the data encrypted according to RFC 8188, for the relevant
+subscriber.
+
 # TEMPLATES
 
 Various templates are available for including in the app's templates:
@@ -211,6 +221,8 @@ application, registering the needed information needed to web-push.
 [Mojolicious::Command::webpush](https://metacpan.org/pod/Mojolicious::Command::webpush) - command-line control of web-push.
 
 RFC 8292 - Voluntary Application Server Identification (for web push).
+
+[Crypt::RFC8188](https://metacpan.org/pod/Crypt::RFC8188) - Encrypted Content-Encoding for HTTP (using `aes128gcm`).
 
 [https://developers.google.com/web/fundamentals/push-notifications](https://developers.google.com/web/fundamentals/push-notifications)
 

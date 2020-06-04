@@ -4,6 +4,7 @@ use Mojo::JSON qw(decode_json);
 use Crypt::PK::ECC;
 use MIME::Base64 qw(encode_base64url decode_base64url);
 use Crypt::JWT qw(encode_jwt decode_jwt);
+use Crypt::RFC8188 qw(ece_encrypt_aes128gcm);
 
 our $VERSION = '0.01';
 
@@ -78,6 +79,17 @@ sub _verify_helper {
   };
 }
 
+sub _encrypt_helper {
+  my ($c, $plaintext, $receiver_key, $auth_key) = @_;
+  die "Invalid p256dh key specified\n"
+    if length($receiver_key) != 65 or $receiver_key !~ /^\x04/;
+  my $onetime_key = Crypt::PK::ECC->new->generate_key('prime256v1');
+  ece_encrypt_aes128gcm(
+    $plaintext, (undef) x 2, $onetime_key, $receiver_key, $auth_key,
+  );
+}
+
+
 sub register {
   my ($self, $app, $conf) = @_;
   my @config_errors = grep !exists $conf->{$_}, @MANDATORY_CONF;
@@ -95,6 +107,7 @@ sub register {
     : _make_auth_helper($app, $conf)
   );
   $app->helper('webpush.verify_token' => \&_verify_helper);
+  $app->helper('webpush.encrypt' => \&_encrypt_helper);
   my $r = $app->routes;
   $r->post($conf->{save_endpoint} => _make_route_handler(
     @$conf{qw(subs_session2user_p subs_create_p)},
@@ -319,6 +332,16 @@ Gives the app's public VAPID key, calculated from the private key.
 Cryptographically verifies a JSON Web Token (JWT), such as generated
 by L</webpush.authorization>.
 
+=head2 webpush.encrypt
+
+  use MIME::Base64 qw(decode_base64url);
+  my $ciphertext = $c->webpush->encrypt($data_bytes,
+    map decode_base64url($_), @{$subscription_info->{keys}}{qw(p256dh auth)}
+  );
+
+Returns the data encrypted according to RFC 8188, for the relevant
+subscriber.
+
 =head1 TEMPLATES
 
 Various templates are available for including in the app's templates:
@@ -368,6 +391,8 @@ L<Mojolicious>, L<Mojolicious::Guides>, L<https://mojolicious.org>.
 L<Mojolicious::Command::webpush> - command-line control of web-push.
 
 RFC 8292 - Voluntary Application Server Identification (for web push).
+
+L<Crypt::RFC8188> - Encrypted Content-Encoding for HTTP (using C<aes128gcm>).
 
 L<https://developers.google.com/web/fundamentals/push-notifications>
 
