@@ -7,6 +7,7 @@ use Mojo::File qw(curfile);
 use lib curfile->sibling('lib')->to_string;
 use TestUtils qw(webpush_config $ENDPOINT %userdb);
 
+plugin 'ServiceWorker';
 my $webpush = plugin 'WebPush' => webpush_config();
 
 post '/login/:user_id' => sub {

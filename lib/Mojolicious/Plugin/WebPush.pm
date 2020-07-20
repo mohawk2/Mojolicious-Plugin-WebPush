@@ -16,6 +16,14 @@ my @MANDATORY_CONF = qw(
   subs_delete_p
 );
 my @AUTH_CONF = qw(claim_sub ecc_private_key);
+my $DEFAULT_PUSH_HANDLER = <<'EOF';
+event => {
+  var msg = event.data.json();
+  var title = msg.title;
+  delete msg.title;
+  event.waitUntil(self.registration.showNotification(title, msg));
+}
+EOF
 
 sub _decode {
   my ($bytes) = @_;
@@ -113,6 +121,9 @@ sub register {
     @$conf{qw(subs_session2user_p subs_create_p)},
   ), 'webpush.save');
   push @{ $app->renderer->classes }, __PACKAGE__;
+  $app->serviceworker->add_event_listener(
+    push => $conf->{push_handler} || $DEFAULT_PUSH_HANDLER
+  );
   $self;
 }
 
@@ -285,6 +296,18 @@ which needs it. Must be either an HTTPS or C<mailto:> URL.
 A value to be added to current time, in seconds, in the C<exp> claim
 for L</webpush.authorization>. Defaults to 86400 (24 hours). The maximum
 valid value in RFC 8292 is 86400.
+
+=head2 push_handler
+
+Override the default push-event handler supplied to
+L<Mojolicious::Plugin::ServiceWorker/add_event_listener>. The default
+will interpret the message as a JSON object. The key C<title> will be
+the notification title, deleted from that object, then the object will be
+the options passed to C<< <ServiceWorkerRegistration>.showNotification >>.
+
+See
+L<https://developers.google.com/web/fundamentals/push-notifications/handling-messages>
+for possibilities.
 
 =head1 HELPERS
 

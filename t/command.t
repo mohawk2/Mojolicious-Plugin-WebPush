@@ -8,6 +8,7 @@ use Mojo::File qw(curfile);
 use lib curfile->sibling('lib')->to_string;
 use TestUtils qw(webpush_config %userdb);
 
+plugin 'ServiceWorker';
 my $plugin = plugin 'WebPush' => webpush_config();
 my $cmd = Mojolicious::Command::webpush->new(app => app);
 

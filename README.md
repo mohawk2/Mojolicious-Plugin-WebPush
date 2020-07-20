@@ -128,6 +128,18 @@ A value to be added to current time, in seconds, in the `exp` claim
 for ["webpush.authorization"](#webpush-authorization). Defaults to 86400 (24 hours). The maximum
 valid value in RFC 8292 is 86400.
 
+## push\_handler
+
+Override the default push-event handler supplied to
+["add\_event\_listener" in Mojolicious::Plugin::ServiceWorker](https://metacpan.org/pod/Mojolicious::Plugin::ServiceWorker#add_event_listener). The default
+will interpret the message as a JSON object. The key `title` will be
+the notification title, deleted from that object, then the object will be
+the options passed to `<ServiceWorkerRegistration>.showNotification`.
+
+See
+[https://developers.google.com/web/fundamentals/push-notifications/handling-messages](https://developers.google.com/web/fundamentals/push-notifications/handling-messages)
+for possibilities.
+
 # HELPERS
 
 ## webpush.create\_p

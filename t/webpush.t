@@ -8,6 +8,7 @@ use MIME::Base64 qw(encode_base64url decode_base64url);
 use Crypt::PRNG qw(random_bytes_b64u);
 use Crypt::RFC8188 qw(ece_decrypt_aes128gcm);
 
+plugin 'ServiceWorker';
 plugin 'WebPush' => webpush_config();
 
 # modified port of github.com/web-push-libs/pywebpush tests

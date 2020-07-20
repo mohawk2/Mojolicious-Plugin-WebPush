@@ -7,6 +7,7 @@ use TestUtils qw(webpush_config $SUB $PUBKEY_B64);
 use MIME::Base64 qw(encode_base64url decode_base64url);
 use Mojo::JSON qw(decode_json);
 
+plugin 'ServiceWorker';
 plugin 'WebPush' => webpush_config();
 
 # modified port of github.com/web-push-libs/vapid/py_vapid tests
