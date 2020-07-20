@@ -1,6 +1,6 @@
 package Mojolicious::Plugin::WebPush;
 use Mojo::Base 'Mojolicious::Plugin';
-use Mojo::JSON qw(decode_json);
+use Mojo::JSON qw(decode_json encode_json);
 use Crypt::PK::ECC;
 use MIME::Base64 qw(encode_base64url decode_base64url);
 use Crypt::JWT qw(encode_jwt decode_jwt);
@@ -97,6 +97,36 @@ sub _encrypt_helper {
   );
 }
 
+sub _send_helper {
+  my ($c, $message, $user_id, $ttl, $urgency) = @_;
+  $ttl ||= 30;
+  $urgency ||= 'normal';
+  $c->webpush->read_p($user_id)->then(sub {
+    my ($subs_info) = @_;
+    my $body = $c->webpush->encrypt(
+      encode_json($message),
+      map decode_base64url($_), @{$subs_info->{keys}}{qw(p256dh auth)}
+    );
+    my $headers = {
+      Authorization => $c->webpush->authorization,
+      'Content-Length' => length($body),
+      'Content-Encoding' => 'aes128gcm',
+      TTL => $ttl,
+      Urgency => $urgency,
+    };
+    $c->app->ua->post_p($subs_info->{endpoint}, $headers, $body);
+  })->then(sub {
+    my ($tx) = @_;
+    return $c->webpush->delete_p($user_id)->then(sub {
+      { data => { success => \1 } }
+    }) if $tx->res->code == 404 or $tx->res->code == 410;
+    return { errors => [ { message => $tx->res->body } ] }
+      if $tx->res->code > 399;
+    { data => { success => \1 } };
+  }, sub {
+    { errors => [ { message => $_[0] } ] }
+  });
+}
 
 sub register {
   my ($self, $app, $conf) = @_;
@@ -116,6 +146,7 @@ sub register {
   );
   $app->helper('webpush.verify_token' => \&_verify_helper);
   $app->helper('webpush.encrypt' => \&_encrypt_helper);
+  $app->helper('webpush.send_p' => \&_send_helper);
   my $r = $app->routes;
   $r->post($conf->{save_endpoint} => _make_route_handler(
     @$conf{qw(subs_session2user_p subs_create_p)},
@@ -367,6 +398,25 @@ by L</webpush.authorization>.
 
 Returns the data encrypted according to RFC 8188, for the relevant
 subscriber.
+
+=head2 webpush.send_p
+
+  my $result_p = $c->webpush->send_p($jsonable_data, $user_id, $ttl, $urgency);
+
+JSON-encodes the given value, encrypts it according to the given user's
+subscription data, adds a VAPID C<Authorization> header, then sends it
+to the relevant web-push endpoint.
+
+Returns a promise of the result, which will be a hash-ref with either a
+C<data> key indicating success, or an C<errors> key for an array-ref of
+hash-refs with a C<message> giving reasons.
+
+If the sending gets a status code of 404 or 410, this indicates the
+subscriber has unsubscribed, and L</webpush.delete_p> will be used to
+remove the registration. This is considered success.
+
+The C<urgency> must be one of C<very-low>, C<low>, C<normal> (the default)
+or C<high>. The C<ttl> defaults to 30 seconds.
 
 =head1 TEMPLATES
 

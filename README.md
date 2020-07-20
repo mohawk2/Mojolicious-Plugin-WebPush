@@ -199,6 +199,25 @@ by ["webpush.authorization"](#webpush-authorization).
 Returns the data encrypted according to RFC 8188, for the relevant
 subscriber.
 
+## webpush.send\_p
+
+    my $result_p = $c->webpush->send_p($jsonable_data, $user_id, $ttl, $urgency);
+
+JSON-encodes the given value, encrypts it according to the given user's
+subscription data, adds a VAPID `Authorization` header, then sends it
+to the relevant web-push endpoint.
+
+Returns a promise of the result, which will be a hash-ref with either a
+`data` key indicating success, or an `errors` key for an array-ref of
+hash-refs with a `message` giving reasons.
+
+If the sending gets a status code of 404 or 410, this indicates the
+subscriber has unsubscribed, and ["webpush.delete\_p"](#webpush-delete_p) will be used to
+remove the registration. This is considered success.
+
+The `urgency` must be one of `very-low`, `low`, `normal` (the default)
+or `high`. The `ttl` defaults to 30 seconds.
+
 # TEMPLATES
 
 Various templates are available for including in the app's templates:

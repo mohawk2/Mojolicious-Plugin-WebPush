@@ -3,7 +3,7 @@ use Test::More;
 use Test::Mojo;
 use Mojo::File qw(curfile);
 use lib curfile->sibling('lib')->to_string;
-use TestUtils qw(webpush_config);
+use TestUtils qw(webpush_config %userdb);
 use MIME::Base64 qw(encode_base64url decode_base64url);
 use Crypt::PRNG qw(random_bytes_b64u);
 use Crypt::RFC8188 qw(ece_decrypt_aes128gcm);
@@ -32,7 +32,7 @@ my $SUBS_INFO = gen_subscription_info($SUBSCRIBER_PRIVATE_KEY);
 sub gen_subscription_info {
   my ($recv_key, $endpoint) = @_;
   $recv_key ||= gen_key();
-  $endpoint ||= "https://example.com/";
+  $endpoint ||= "/push";
   +{
     endpoint => $endpoint,
     keys => {
@@ -56,6 +56,35 @@ subtest 'encrypt RFC8188' => sub {
     $keys[1],
   );
   is $decoded, $data;
+};
+
+my $user_id = 'bill';
+my $user_fail = 'bad';
+post '/push' => sub {
+  my ($c) = @_;
+  $c->render(json => { success => \1 });
+};
+subtest 'send_p' => sub {
+  my $info;
+  app->webpush->create_p($user_id, $SUBS_INFO)->then(sub { $info = shift })->wait;
+  isnt $info, undef;
+  $info = undef;
+  app->webpush->send_p(
+    { title => "Mary had a little lamb, with some nice mint jelly" },
+    $user_id, 30, 'normal',
+  )->then(sub { $info = shift })->wait;
+  is_deeply $info, { data => { success => \1 } } or diag explain $info;
+  $info = undef;
+  app->webpush->create_p(
+    $user_fail, { %$SUBS_INFO, endpoint => '/nope' },
+  )->then(sub { $info = shift })->wait;
+  isnt $info, undef;
+  app->webpush->send_p(
+    { title => "Mary had a little lamb, with some nice mint jelly" },
+    $user_fail, 30, 'normal',
+  )->then(sub { $info = shift })->wait;
+  is_deeply $info, { data => { success => \1 } } or diag explain $info;
+  ok !$userdb{$user_fail}, 'user deleted after 404';
 };
 
 done_testing;
