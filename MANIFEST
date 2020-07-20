@@ -1,7 +1,5 @@
 Changes
 examples/app.pl
-examples/data.db
-examples/webpush_private_key.pem
 lib/Mojolicious/Command/webpush.pm
 lib/Mojolicious/Plugin/WebPush.pm
 Makefile.PL
