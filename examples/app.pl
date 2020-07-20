@@ -59,7 +59,7 @@ sub webpush_config {
     subs_create_p => \&subs_create_p,
     subs_read_p => \&subs_read_p,
     subs_delete_p => \&subs_delete_p,
-    ecc_private_key => $pushkeyfile,
+    (-s $pushkeyfile ? (ecc_private_key => $pushkeyfile) : ()),
     claim_sub => 'mailto:admin@example.com',
   };
 }
