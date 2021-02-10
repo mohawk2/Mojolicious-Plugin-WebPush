@@ -12,3 +12,4 @@ pm_to_blib
 \.swp$
 examples\/data.db
 examples\/webpush_private_key\.pem
+^\.github\/
