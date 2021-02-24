@@ -132,10 +132,10 @@ sub register {
   $app->helper('webpush.create_p' => sub {
     eval { validate_subs_info($_[2]) };
     return Mojo::Promise->reject($@) if $@;
-    $conf->{subs_create_p}->(@_);
+    goto &{ $conf->{subs_create_p} };
   });
-  $app->helper('webpush.read_p' => sub { $conf->{subs_read_p}->(@_) });
-  $app->helper('webpush.delete_p' => sub { $conf->{subs_delete_p}->(@_) });
+  $app->helper('webpush.read_p' => $conf->{subs_read_p});
+  $app->helper('webpush.delete_p' => $conf->{subs_delete_p});
   $app->helper('webpush.authorization' => (grep !$conf->{$_}, @AUTH_CONF)
     ? sub { die "Must provide @AUTH_CONF\n" }
     : _make_auth_helper($app, $conf)
