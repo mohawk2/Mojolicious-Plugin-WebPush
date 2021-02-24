@@ -7,7 +7,7 @@ use MIME::Base64 qw(encode_base64url decode_base64url);
 use Crypt::JWT qw(encode_jwt decode_jwt);
 use Crypt::RFC8188 qw(ece_encrypt_aes128gcm);
 
-our $VERSION = '0.04';
+our $VERSION = '0.05';
 
 my @MANDATORY_CONF = qw(
   subs_session2user_p
